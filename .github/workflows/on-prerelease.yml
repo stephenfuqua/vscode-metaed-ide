@@ -114,31 +114,53 @@ jobs:
           path: vscode-metaed.vsix
           sha256: "${{ needs.package.outputs.hash-code }}"
 
+#       - name: Attach to release
+#         shell: pwsh
+#         run: |
+#           $release = "${{ github.ref_name }}"
+#           $repo = "${{ github.repository }}"
+#           $token = "${{ env.GITHUB_TOKEN }}"
+#           $uploadName = "vscode-metaed.vsix"
+
+#           $url = "https://api.github.com/repos/$repo/releases/tags/$release"
+
+#           $gh_headers = @{
+#               "Accept"        = "application/vnd.github+json"
+#               "Authorization" = "Bearer $token"
+#           }
+
+#           $response = Invoke-RestMethod -Uri $url -Headers $gh_headers
+#           $releaseId = $response.id
+
+#           $url = "https://uploads.github.com/repos/$repo/releases/$releaseId/assets"
+
+#           $gh_headers["Content-Type"] = "application/octet"
+#           Invoke-RestMethod -Method POST `
+#               -Uri "$($url)?name=$($uploadName)" `
+#               -Headers $gh_headers `
+#               -InFile $uploadName
+
       - name: Attach to release
-        shell: pwsh
+        shell: bash
         run: |
-          $release = "${{ github.ref_name }}"
-          $repo = "${{ github.repository }}"
-          $token = "${{ env.GITHUB_TOKEN }}"
-          $uploadName = "vscode-metaed.vsix"
+          release="${{ github.ref_name }}"
+          repo="${{ github.repository }}"
+          token="${{ env.GITHUB_TOKEN }}"
+          uploadName="vscode-metaed.vsix"
 
-          $url = "https://api.github.com/repos/$repo/releases/tags/$release"
+          url="https://api.github.com/repos/$repo/releases/tags/$release"
 
-          $gh_headers = @{
-              "Accept"        = "application/vnd.github+json"
-              "Authorization" = "Bearer $token"
-          }
+          response=(curl -H "Authorization: Bearer $token" -H "Accept: application/vnd.github+json" -X GET $url)
 
-          $response = Invoke-RestMethod -Uri $url -Headers $gh_headers
-          $releaseId = $response.id
+          releaseId=($response | jq '.id')
 
-          $url = "https://uploads.github.com/repos/$repo/releases/$releaseId/assets"
+          url="https://uploads.github.com/repos/$repo/releases/$releaseId/assets"
 
-          $gh_headers["Content-Type"] = "application/octet"
-          Invoke-RestMethod -Method POST `
-              -Uri "$($url)?name=$($uploadName)" `
-              -Headers $gh_headers `
-              -InFile $uploadName
+          curl -H "Content-Type: application/octet" \
+               -H "Authorization: Bearer $token" \
+               -H "Accept: application/vnd.github+json" \
+               -X $url \
+               --data-binary "@$($uploadName)"
 
 
   sbom-attach:
